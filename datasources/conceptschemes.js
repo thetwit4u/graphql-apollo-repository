@@ -2,7 +2,7 @@ const { RESTDataSource } = require("apollo-datasource-rest")
 const {getPagingUrl,getFilterUrl, getSortingUrl} = require('./utils')
 const _ = require('lodash');
 const {JSON_DB_URL} = process.env
-
+const {fromGlobalId} = require('graphql-relay')
 
 
 class ConceptSchemeAPI extends RESTDataSource{
@@ -17,7 +17,8 @@ class ConceptSchemeAPI extends RESTDataSource{
         return super.didReceiveResponse(response, _request);
     }
 
-    async getConceptSchemeById(id){
+    async getConceptSchemeById(globalID){
+        const {id} = fromGlobalId(globalID)
         const data = await this.get(`/${id}`);
         return data;
     }

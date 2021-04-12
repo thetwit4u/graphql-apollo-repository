@@ -395,6 +395,17 @@ const queryType = new GraphQLObjectType({
             }
           },
         },
+        conceptScheme: {
+          type: ConceptSchemeType,
+          description: 'Get a conceptscheme with GlobalID',
+          args: {
+            id: {type:GraphQLNonNull(GraphQLID)}
+          },
+          resolve: async (_, args,{dataSources}) => {
+            const conceptScheme = await dataSources.conceptSchemeAPI.getConceptSchemeById(args.id);
+            return conceptScheme
+          },
+        },
         concepts: {
           type: conceptsConnection,
           description: 'All Concepts',
@@ -410,6 +421,17 @@ const queryType = new GraphQLObjectType({
               ...connectionFromArray([...concepts],args),
               ...{totalCount : totalCount}
             }
+          },
+        },
+        concept: {
+          type: ConceptType,
+          description: 'Get a concept with a GlobalID',
+          args: {
+            id: {type:GraphQLNonNull(GraphQLID)}
+          },
+          resolve: async (_, args,{dataSources}) => {
+            const concept = await dataSources.conceptAPI.getConceptById(args.id);
+            return concept
           },
         },
         // user: {
