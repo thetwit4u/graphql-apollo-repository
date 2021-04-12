@@ -1,5 +1,5 @@
 const {globalIdField, fromGlobalId,connectionFromArray, connectionArgs,mutationWithClientMutationId ,connectionDefinitions, nodeDefinitions, cursorToOffset} = require('graphql-relay')
-const {GraphQLSchema, GraphQLObjectType, GraphQLID, GraphQLString, GraphQLNonNull, GraphQLInt, GraphQLInputObjectType,GraphQLList} = require('graphql')
+const {GraphQLSchema, GraphQLObjectType, GraphQLID, GraphQLString, GraphQLNonNull, GraphQLInt, GraphQLInputObjectType,GraphQLList, GraphQLBoolean} = require('graphql')
 const { GraphQLDateTime,GraphQLDate } = require('graphql-iso-date')
 const { GraphQLJSONObject } = require('graphql-type-json')
 
@@ -200,12 +200,19 @@ const ConceptType = new GraphQLObjectType({
     definition: {
       type: GraphQLString,
       args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
-      resolve: (parent, args,{dataSources}) => {
+      resolve: (parent, args) => {
         let langText = parent[`definition_${args?.language?.toLowerCase()}`]
         return langText
       },
     },
     notation: {type: GraphQLString},
+    hasNarrower: {
+      type: GraphQLBoolean,
+      resolve: ({narrower}, args) => {
+        const res =  (narrower && (narrower?.length > 0))?true:false
+        return res
+      },
+    },
     broader: {
       type: conceptsConnection,
       description: 'Broader Concepts of the Concept',
