@@ -1,0 +1,21 @@
+{
+  "dependencies": {
+    "apollo-datasource-rest": "^0.11.0",
+    "apollo-server": "^2.22.2",
+    "dotenv": "^8.2.0",
+    "faker": "^5.5.3",
+    "graphql": "^15.5.0",
+    "graphql-iso-date": "^3.6.1",
+    "graphql-relay": "^0.6.0",
+    "graphql-tools": "^7.0.4",
+    "graphql-type-json": "^0.3.2"
+  },
+  "scripts": {
+    "start:prod": "node server.js",
+    "update:schema": "node ./schema/print-schema.js",
+    "start:dev": "nodemon server.js"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.7"
+  }
+}
