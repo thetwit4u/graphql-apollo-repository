@@ -388,7 +388,11 @@ const queryType = new GraphQLObjectType({
           },
           resolve: async (_, args,{dataSources}) => {
             const conceptSchemes = await dataSources.conceptSchemeAPI.getConceptSchemes(args);
-            return connectionFromArray([...conceptSchemes], args);
+            const totalCount = conceptSchemes.length
+            return {
+              ...connectionFromArray([...conceptSchemes],args),
+              ...{totalCount : totalCount}
+            }
           },
         },
         concepts: {
