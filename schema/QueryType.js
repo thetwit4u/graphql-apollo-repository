@@ -113,7 +113,26 @@ const queryType = new GraphQLObjectType({
             }  
           },
         },
-        wkbeNews: {
+        apolloDocument: {
+            type: IApolloDocumentInterface,
+            description: 'Get an ApolloDocument',
+            args: {
+              id: {type:GraphQLID},
+              _id: {type:GraphQLString}
+            },
+            resolve: async (_obj, args,{dataSources}) => {
+              let searchId;
+              if (args._id) {
+                searchId =  args._id.split('/').pop()
+              } else {
+                const {id} = fromGlobalId(args.id)
+                searchId = id
+              }
+              const doc = await dataSources.documentAPI.getDocumentById(searchId);
+              return doc
+            },
+        },
+        wkbeNewsDocuments: {
             type: wkbeNewsConnection,
             description: 'All WKBENews Documents',
             args: {
@@ -123,25 +142,6 @@ const queryType = new GraphQLObjectType({
             },
             resolve: async (_obj, args,{dataSources}) => {
               const publicationId =  toGlobalId('WKBENews','wkbe-news') 
-              const newArgs =  _.merge(args,{filters : {inPublication:publicationId}})
-              const documents = await dataSources.documentAPI.getDocuments(newArgs);
-              const totalCount = documents.length
-              return {
-                ...connectionFromArray([...documents],args),
-                ...{totalCount : totalCount}
-              }  
-            },
-          },
-          wkbeLegislation: {
-            type: wkbeLegislationConnection,
-            description: 'All WKBELegislation Documents',
-            args: {
-              ...connectionArgs,
-              // orderBy: {type: DocumentOrderByType},
-              // filters: { type: DocumentFilterType }
-            },
-            resolve: async (_obj, args,{dataSources}) => {
-              const publicationId =  toGlobalId('WKBELegislation','wkbe-legislation') 
               const newArgs =  _.merge(args,{filters : {inPublication:publicationId}})
               const documents = await dataSources.documentAPI.getDocuments(newArgs);
               const totalCount = documents.length

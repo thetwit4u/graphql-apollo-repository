@@ -12,8 +12,21 @@ const faker = require('faker')
 const DEFAULT_LANGUAGE = 'EN'
 const {LANGUAGE, SORT} = require('./enumTypes')
 
+/**
+ * Helper functions
+ */
+ const generateRandomText = () => {
+  const nbTextParts = Array.from(Array(faker.datatype.number(4)).keys())
+  
+  const text = nbTextParts.map(() => {
+    const title = `<h2>${faker.lorem.sentence()}</h2>`
+    const nbTextParafs =  Array.from(Array(faker.datatype.number(5)).keys())
+    const textParts = nbTextParafs.map(() => {return `<p>${faker.lorem.paragraph(faker.datatype.number(12))}}</p>`})
 
-
+    return `${title}${textParts.join('')}`
+ })
+ return text.join('')
+}
 
 /**
  * Interface Types
@@ -550,6 +563,16 @@ const ApolloDocumentOrderByType = new GraphQLInputObjectType({
         }
       },
     },
+    content: {
+      type: ContentDataType,
+      description: 
+      `Publication : unique collection for this type of documents 
+      [MACK Content Expression -> pcicore:isInPublication]`,
+      resolve: async ({content}, args,{dataSources}) => {
+        const contentData = await dataSources.documentAPI.getContentById(content);
+        return contentData
+      },
+    },
 
   }),
 });
@@ -626,6 +649,91 @@ const WKBELegislationType = new GraphQLObjectType({
       resolve: () => faker.date.recent(1)
     },
     identifier: { type: GraphQLString },
+    title: {
+      type: GraphQLString,
+      args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
+      resolve: (parent, args,{dataSources}) => {
+        let langText = parent[`title_${args?.language?.toLowerCase()}`]
+        return langText
+      },
+    },   
+    inPublication: {
+      type: ApolloPublicationType,
+      description: 
+      `Publication : unique collection for this type of documents 
+      [MACK Content Expression -> pcicore:isInPublication]`,
+      resolve: async ({inPublication}, args,{dataSources}) => {
+        const pubData = await dataSources.conceptAPI.getConceptById(inPublication);
+        return pubData
+      },
+    },
+    about: {
+      type: conceptsConnection,
+      description: `Subjectregister concepts classification managed in Brons and cannot be modified in Apollo.
+      [MACK Content Expression -> pcicore:isAbout]`,
+      args: {
+        ...connectionArgs,
+        orderBy: {type: ConceptOrderByType},
+        filters: { type: ConceptFilterType }
+      },
+      resolve: async ({about}, args,{dataSources}) => {
+        const concepts = await dataSources.conceptAPI.getConceptByIds(about,args);
+        const totalCount = concepts.length
+        return {
+          ...connectionFromArray([...concepts],args),
+          ...{totalCount : totalCount}
+        }
+      },
+    },
+  }),
+});
+
+const ContentDataType = new GraphQLObjectType({
+  name: 'ContentData',
+  interfaces: [nodeInterface],
+  fields: () => ({
+    id: globalIdField('ContentData'),
+    _id: {type: GraphQLString, description:'Unique URI within Apollo'},
+    identifier: { type: GraphQLString },
+    type: {
+      type: ConceptType,
+      resolve: async ({type}, args,{dataSources}) => {
+        const typeData = await dataSources.conceptAPI.getConceptById(type);
+        return typeData
+      },
+    },
+    asString: {
+      type: GraphQLString, 
+      description:'Content as escaped string',
+      resolve: (parent, args,{dataSources}) => {
+        const text = generateRandomText()
+        return text
+      },
+    },
+    asBase64: {
+      type: GraphQLString, 
+      description:'Content as escaped string',
+      resolve: (parent, args,{dataSources}) => {
+        const text = generateRandomText()
+        const buf = Buffer.from(text);
+        return buf.toString('base64')
+      },
+    },
+    asDataUrl: {type: GraphQLString, description:'Content as data url'},
+    downloadUrl: {
+      type: GraphQLString, 
+      description:'Content as escaped string',
+      resolve: (parent, args,{dataSources}) => {
+        return `s3://apollobucket/id-${faker.datatype.uuid()}`
+      },
+    },
+    size: {
+      type: GraphQLInt, 
+      description:'Content Size in bytes',
+      resolve: (parent, args,{dataSources}) => {
+        return faker.datatype.number({options:{min:4000,max:100000}})
+      },
+    },
     title: {
       type: GraphQLString,
       args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },

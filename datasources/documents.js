@@ -70,7 +70,10 @@ class DocumentAPI extends RESTDataSource{
         const data = await this.get(`/content/?${idsParams}`);
         return data;
     }
-
+    async getContentById(id,args){
+        const data = await this.get(`/content/${id}`);
+        return data;
+    }
     async getProvenanceByIds(ids,args){
         let idsParams = 'id='+ _.join(ids,'&id=')
         const filterParams = getFilterUrl(args)
