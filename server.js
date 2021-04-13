@@ -5,7 +5,7 @@ const ConceptSchemeAPI = require('./datasources/conceptschemes')
 const ConceptAPI = require('./datasources/concepts')
 const DocumentAPI = require('./datasources/documents')
 // const UserAPI = require('./datasources/users')
-const schema = require('./schema')
+const schema = require('./schema/schema')
 
 
 const dataSources = () => ({

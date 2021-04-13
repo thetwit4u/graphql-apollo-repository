@@ -79,6 +79,19 @@ class DocumentAPI extends RESTDataSource{
         return data;
     }
 
+    async searchDocuments(args){
+        const pagingParams = getPagingUrl(args)
+        const filterParams = getFilterUrl(args)
+        const queryParams = [pagingParams,filterParams].join('&')
+        const data = await this.get(`/apollodocuments/?${queryParams}`);
+        return data;
+    }
+
+    
+
+
+
+
 }
 
 module.exports = DocumentAPI;
