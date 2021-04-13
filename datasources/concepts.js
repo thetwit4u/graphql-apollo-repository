@@ -23,7 +23,6 @@ class ConceptAPI extends RESTDataSource{
         const filterParams = getFilterUrl(args)
         const queryParams = [pagingParams,filterParams].join('&')
         const data = await this.get(`/?${queryParams}`);
-        //const pagingInfo = getPagingInfo(args,this.totalCount);
         return data;
     }
     async getConceptsByBibliographicResourcetype(bibrestype){
@@ -31,6 +30,21 @@ class ConceptAPI extends RESTDataSource{
         return data;
     }
     
+    async getNarrowerConceptsByIds(ids){
+        const idsFilter = [].concat(ids.map((id) => {return `id=${id}`}))
+        const queryStr = `?${idsFilter.join('&')}&narrower_like=.&_limit=100`
+        const data = await this.get(queryStr)
+        const narrowers = _.flatten(data.map(({narrower}) => { return narrower}))
+
+        let returns
+        if ((narrowers === undefined) || (narrowers.length === 0)) {
+            returns = ids     
+        } else {
+            const children = await this.getNarrowerConceptsByIds(narrowers)
+            returns = children
+        }
+        return returns 
+    }
 
     async getConceptById(id){
         const data = await this.get(`/${id}`);

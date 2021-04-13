@@ -471,6 +471,27 @@ const ConceptType = new GraphQLObjectType({
  */
 
 
+ 
+ const ApolloDocumentFilterType = new GraphQLInputObjectType({
+  name: 'ApolloDocumentFilter',
+  fields: () => ({
+    ids:  { type: new GraphQLList(GraphQLID),description: `Filter on document ids (Global Identifier)`},
+    aboutIds:  { type: new GraphQLList(GraphQLID),description: `Filter on Concept ids (Global Identifier)
+    All documents classified with these concept (or narrower terms) are retrieved`}
+  })
+});
+
+const ApolloDocumentOrderByType = new GraphQLInputObjectType({
+  name: 'ApolloDocumentOrderBy',
+  fields: () => ({
+    title_nl: { type: SORT},
+    title_en: { type: SORT },
+    title_fr: { type: SORT }
+  })
+});
+
+
+
  const HRLPDocumentType = new GraphQLObjectType({
   name: 'HRLPDocument',
   interfaces: [nodeInterface, IApolloDocumentInterface],
@@ -772,6 +793,6 @@ module.exports = {
   ConceptSchemeType, ConceptType,
   WKBENewsType,WKBELegislationType,HRLPDocumentType,ApolloPublicationType,
   IApolloDocumentInterface,IConceptInterface,nodeInterface, nodeField, nodesField ,
-  ConceptSchemeFilterType, ConceptFilterType, 
-  ConceptOrderByType, ConceptSchemeOrderByType
+  ConceptSchemeFilterType, ConceptFilterType, ApolloDocumentFilterType,
+  ConceptOrderByType, ConceptSchemeOrderByType, ApolloDocumentOrderByType
 }

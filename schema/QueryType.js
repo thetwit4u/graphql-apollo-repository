@@ -3,12 +3,12 @@ const {
     ConceptSchemeType, ConceptType,
     WKBENewsType,WKBELegislationType,HRLPDocumentType,ApolloPublicationType,
     IApolloDocumentInterface,IConceptInterface,nodeInterface, nodeField, nodesField ,
-    ConceptSchemeFilterType, ConceptFilterType, 
-    ConceptOrderByType, ConceptSchemeOrderByType
+    ConceptSchemeFilterType, ConceptFilterType, ApolloDocumentFilterType,
+    ConceptOrderByType, ConceptSchemeOrderByType, ApolloDocumentOrderByType
   } = require('./Types')
 const _ = require('lodash')
 const { fromGlobalId,  toGlobalId,connectionFromArray, connectionArgs} = require('graphql-relay')
-const { GraphQLObjectType, GraphQLID, GraphQLNonNull} = require('graphql')
+const { GraphQLObjectType, GraphQLID, GraphQLNonNull,GraphQLString} = require('graphql')
 
 const queryType = new GraphQLObjectType({
     name: 'Query',
@@ -63,11 +63,18 @@ const queryType = new GraphQLObjectType({
             type: IConceptInterface,
             description: 'Get a concept with a GlobalID',
             args: {
-              id: {type:GraphQLNonNull(GraphQLID)}
+              id: {type:GraphQLID},
+              _id: {type:GraphQLString}
             },
             resolve: async (_obj, args,{dataSources}) => {
-              const {id} = fromGlobalId(args.id)
-              const concept = await dataSources.conceptAPI.getConceptById(id);
+              let searchId;
+              if (args._id) {
+                searchId =  args._id.split('/').pop()
+              } else {
+                const {id} = fromGlobalId(args.id)
+                searchId = id
+              }
+              const concept = await dataSources.conceptAPI.getConceptById(searchId);
               return concept
             },
           },
@@ -149,11 +156,11 @@ const queryType = new GraphQLObjectType({
           description: 'Search Documents in Apollo',
           args: {
             ...connectionArgs,
-            // orderBy: {type: DocumentOrderByType},
-            // filters: { type: DocumentFilterType }
+            orderBy: {type: ApolloDocumentOrderByType},
+            filters: { type: ApolloDocumentFilterType }
           },
           resolve: async (_obj, args,{dataSources}) => {
-            const documents = await dataSources.documentAPI.searchDocuments(args);
+            const documents = await dataSources.documentAPI.searchDocuments(args,dataSources);
             const totalCount = documents.length
             return {
               ...connectionFromArray([...documents],args),

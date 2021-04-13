@@ -3,7 +3,7 @@ const { CheckResultAndHandleErrors } = require("graphql-tools");
 const _ = require('lodash')
 const {getPagingUrl, getFilterUrl, getPagingInfo} = require('./utils')
 const {JSON_DB_URL} = process.env
-
+const {fromGlobalId} = require('graphql-relay')
 
 
 
@@ -79,10 +79,21 @@ class DocumentAPI extends RESTDataSource{
         return data;
     }
 
-    async searchDocuments(args){
+    async searchDocuments(args,dataSources){
         const pagingParams = getPagingUrl(args)
-        const filterParams = getFilterUrl(args)
-        const queryParams = [pagingParams,filterParams].join('&')
+        const filterParams = getFilterUrl(args,dataSources)
+        let leafIdsFilter
+        if (args?.filters?.aboutIds?.length > 0) {
+
+            const ids = args?.filters?.aboutIds.map((gid) => {
+               const {id} = fromGlobalId(gid)
+               return id
+            })
+            const leafIds = await dataSources.conceptAPI.getNarrowerConceptsByIds(ids) 
+            const idsToFilter = (leafIds && Array.isArray(leafIds)) ? leafIds: [concept];
+            leafIdsFilter = idsToFilter.map((leafId) => {return `about_like=${leafId}`}).join('&')
+        }
+        const queryParams = [pagingParams,filterParams,leafIdsFilter].join('&')
         const data = await this.get(`/apollodocuments/?${queryParams}`);
         return data;
     }
