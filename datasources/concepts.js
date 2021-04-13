@@ -3,7 +3,7 @@ const { CheckResultAndHandleErrors } = require("graphql-tools")
 const _ = require('lodash')
 const {getPagingUrl, getFilterUrl, getSortingUrl} = require('./utils')
 const {JSON_DB_URL} = process.env
-const {fromGlobalId} = require('graphql-relay')
+
 
 
 class ConceptAPI extends RESTDataSource{
@@ -32,8 +32,7 @@ class ConceptAPI extends RESTDataSource{
     }
     
 
-    async getConceptById(globalID){
-        const {id} = fromGlobalId(globalID)
+    async getConceptById(id){
         const data = await this.get(`/${id}`);
         return data;
     }

@@ -3,14 +3,15 @@ require('dotenv').config()
 const {ApolloServer} = require('apollo-server')
 const ConceptSchemeAPI = require('./datasources/conceptschemes')
 const ConceptAPI = require('./datasources/concepts')
-// const DocumentAPI = require('./datasources/documents')
+const DocumentAPI = require('./datasources/documents')
 // const UserAPI = require('./datasources/users')
 const schema = require('./schema')
 
 
 const dataSources = () => ({
   conceptSchemeAPI: new ConceptSchemeAPI(),
-  conceptAPI: new ConceptAPI()
+  conceptAPI: new ConceptAPI(),
+  documentAPI: new DocumentAPI()
 })
 
 const server = new ApolloServer({

@@ -1,14 +1,106 @@
-const {globalIdField, fromGlobalId,connectionFromArray, connectionArgs,mutationWithClientMutationId ,connectionDefinitions, nodeDefinitions, cursorToOffset} = require('graphql-relay')
-const {GraphQLSchema, GraphQLObjectType, GraphQLID, GraphQLString, GraphQLNonNull, GraphQLInt, GraphQLInputObjectType,GraphQLList, GraphQLBoolean} = require('graphql')
+
+const _ = require('lodash')
+const {globalIdField, fromGlobalId,  toGlobalId,connectionFromArray, connectionArgs,mutationWithClientMutationId ,connectionDefinitions, nodeDefinitions, cursorToOffset} = require('graphql-relay')
+const {GraphQLSchema, GraphQLObjectType, GraphQLID, GraphQLString, GraphQLNonNull, GraphQLInt, GraphQLInputObjectType,GraphQLList, GraphQLBoolean, GraphQLInterfaceType} = require('graphql')
 const { GraphQLDateTime,GraphQLDate } = require('graphql-iso-date')
 const { GraphQLJSONObject } = require('graphql-type-json')
 
 
 const faker = require('faker')
 
+
 const DEFAULT_LANGUAGE = 'EN'
-const {LANGUAGE} = require('./enumTypes')
-const {SORT} = require('./enumTypes')
+const {LANGUAGE, SORT} = require('./enumTypes')
+
+
+
+
+/**
+ * Interface Types
+ */
+
+
+const IApolloDocumentInterface = new GraphQLInterfaceType({
+  name: 'IApolloDocument',
+  fields: () => ({
+    id: {
+      type: new GraphQLNonNull(GraphQLID)
+    },
+    _id: {type: GraphQLString, description:'Unique URI within Apollo'},
+    identifier: {type: GraphQLString, description:'derived from MACK Content Expression'},
+    title: {
+      type: GraphQLString,
+      description: 'derived from MACK Content Expression',
+      args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
+    },
+//    bibliographicResourceType: {type: ConceptType, description:'derived from bibliographicResourceType MACK Content Work'},
+    inPublication: {type: ApolloPublicationType, description:'derived from bibliographicResourceType MACK Content Expression'},
+
+  }),
+  resolveType: (obj) => {
+      // if(obj.inPublication === 'wkbe-news'){
+      //   return WKBENewsDocumentType
+      // }
+      // if(obj.inPublication === 'wkbe-legislation'){
+      //   return WKBELegislationDocumentType
+      // }
+      if(obj.inPublication === 'hrlp-lippincott-procedures'){
+        return HRLPDocument
+      }
+      return null;
+  }
+});
+
+
+ const IConceptInterface = new GraphQLInterfaceType({
+  name: 'IConcept',
+  fields: () => ({
+    id: {
+      type: new GraphQLNonNull(GraphQLID)
+    },
+    _id: {type: GraphQLString, description:'Unique URI within Apollo'},
+    created: { type: GraphQLDateTime},
+    creator: { type: GraphQLString },
+    contributor: {type: GraphQLString},
+    modified: { type: GraphQLDateTime},
+    prefLabel: { 
+        type: GraphQLString,
+        args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
+    },
+    altLabel: {
+      type: GraphQLString,
+      args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
+    },
+    definition: {
+      type: GraphQLString,
+      args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
+    },
+    notation: {type: GraphQLString},
+    hasNarrower: { type: GraphQLBoolean},
+    broader: {
+      type: conceptsConnection,
+      args: {
+          ...connectionArgs,
+          orderBy: {type: ConceptOrderByType},
+          filters: { type: ConceptFilterType }
+      }
+    },
+    narrower: {
+      type: conceptsConnection,
+      args: {
+          ...connectionArgs,
+          orderBy: {type: ConceptOrderByType},
+          filters: { type: ConceptFilterType }
+      }
+    },
+  }),
+  resolveType: (obj) => {
+      if(obj.bibliographicResourceType === 'http://data.wolterskluwer.com/apollo/resource/object-type/7c688f91-55e0-4a65-aec4-2185b30ef494'){
+        return ApolloPublicationType
+      }
+      return ConceptType;
+  }
+});
 
 
 
@@ -18,29 +110,30 @@ const {SORT} = require('./enumTypes')
 
 const { nodeInterface, nodeField, nodesField } = nodeDefinitions(
   (globalId, {dataSources}) => {
-    const { type, id } = fromGlobalId(globalId);
-  //   if (type === 'User') return dataSources.userAPI.getUser(id);
-  //   if (type === 'Race') return dataSources.userAPI.getRace(id);      
-  if (_type === 'ConceptScheme') return dataSources.conceptSchemeAPI.getConceptSchemeById(id);
-  if (_type === 'Concept') return dataSources.conceptAPI.getConceptById(id);
-  return null;
+    const { type, id } = fromGlobalId(globalId);;      
+    if (type === 'ConceptScheme') return dataSources.conceptSchemeAPI.getConceptSchemeById(id);
+    if (type === 'Concept') return dataSources.conceptAPI.getConceptById(id);
+    if (type === 'ApolloPublication') return dataSources.conceptAPI.getConceptById(id);
+    if (type === 'HRLPDocument') return dataSources.documentAPI.getDocumentById(id);
+    return null;
   },
   (obj) => {
+    if(obj.bibliographicResourceType === 'http://data.wolterskluwer.com/apollo/resource/object-type/7c688f91-55e0-4a65-aec4-2185b30ef494'){
+      return ApolloPublicationType;
+    }
     if (obj.type === 'http://www.w3.org/2004/02/skos/core#ConceptScheme') {
       return ConceptSchemeType;
     }
     if (obj.type === 'http://www.w3.org/2004/02/skos/core#Concept') {
-      // if (obj.bibliographicResourceType === 'http://data.wolterskluwer.com/apollo/resource/object-type/7c688f91-55e0-4a65-aec4-2185b30ef494') {
-      // }
       return ConceptType;
+    }
+    if(obj.inPublication === 'hrlp-lippincott-procedures'){
+      return HRLPDocumentType
     }
     return null;
   },
 );
 
-/**
- * Interface Types
- */
 
 
 /**
@@ -127,6 +220,7 @@ const { connectionType: conceptSchemesConnection } = connectionDefinitions({
   for example.`
   }})});
 
+
 //x _id: ID!
 // type: Concept 
 // inScheme: ConceptScheme
@@ -145,7 +239,8 @@ const { connectionType: conceptSchemesConnection } = connectionDefinitions({
 const ConceptFilterType = new GraphQLInputObjectType({
   name: 'ConceptFilter',
   fields: () => ({
-    ids:  { type: new GraphQLList(GraphQLID)}
+    ids:  { type: new GraphQLList(GraphQLID)},
+    conceptSchemeId : { type: GraphQLID}
   })
 });
 
@@ -161,7 +256,7 @@ const ConceptOrderByType = new GraphQLInputObjectType({
 
 const ConceptType = new GraphQLObjectType({
   name: 'Concept',
-  interfaces: [nodeInterface],
+  interfaces: [nodeInterface, IConceptInterface],
   fields: () => ({
     id: globalIdField('Concept'),
     _id: {type: GraphQLString, description:'Unique URI within Apollo'},
@@ -206,6 +301,14 @@ const ConceptType = new GraphQLObjectType({
       },
     },
     notation: {type: GraphQLString},
+    conceptScheme: {
+      type: ConceptSchemeType,
+      resolve: async ({inscheme}, args,{dataSources}) => {
+        const id =  inscheme.split('/').pop()
+        const conceptScheme = await dataSources.conceptSchemeAPI.getConceptSchemeById(id);
+        return conceptScheme
+      },
+    },
     hasNarrower: {
       type: GraphQLBoolean,
       resolve: ({narrower}, args) => {
@@ -251,7 +354,7 @@ const ConceptType = new GraphQLObjectType({
 });
 
 const { connectionType: conceptsConnection } = connectionDefinitions({
-  nodeType: ConceptType,
+  nodeType: IConceptInterface,
   connectionFields: () => ({
   totalCount: {
     type: GraphQLInt,
@@ -261,6 +364,197 @@ This allows a client to fetch the first five objects by passing "5" as the
 argument to "first", then fetch the total count so it could display "5 of 83"
 for example.`
 }})});
+
+
+/**
+ * Publication Type
+ */
+
+
+ const ApolloPublicationType = new GraphQLObjectType({
+  name: 'ApolloPublication',
+  interfaces: [nodeInterface, IConceptInterface],
+  fields: () => ({
+    id: globalIdField('ApolloPublication'),
+    _id: {type: GraphQLString, description:'Unique URI within Apollo'},
+    created: {
+      type: GraphQLDateTime,
+      resolve: () => faker.date.recent(4)
+    },
+    creator: {
+      type: GraphQLString,
+      resolve: () => faker.name.lastName(),
+    },
+    contributor: {
+      type: GraphQLString,
+      resolve: () => faker.name.lastName(),
+    },
+    modified: {
+      type: GraphQLDateTime,
+      resolve: () => faker.date.recent(1)
+    },
+    prefLabel: {
+      type: GraphQLString,
+      args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
+      resolve: (parent, args) => {
+        let langText = parent[`prefLabel_${args?.language?.toLowerCase()}`]
+        return langText
+      },
+    },
+    altLabel: {
+      type: GraphQLString,
+      args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
+      resolve: (parent, args) => {
+        let langText = parent[`altLabel_${args?.language?.toLowerCase()}`]
+        return langText
+      },
+    },
+    title: {
+      type: GraphQLString,
+      args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
+      resolve: (parent, args) => {
+        let langText = parent[`title_${args?.language?.toLowerCase()}`]
+        return langText
+      },
+    },
+    definition: {
+      type: GraphQLString,
+      args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
+      resolve: (parent, args) => {
+        let langText = parent[`definition_${args?.language?.toLowerCase()}`]
+        return langText
+      },
+    },
+    notation: {type: GraphQLString},
+    conceptScheme: {
+      type: ConceptSchemeType,
+      resolve: async ({inscheme}, args,{dataSources}) => {
+        const id =  inscheme.split('/').pop()
+        const conceptScheme = await dataSources.conceptSchemeAPI.getConceptSchemeById(id);
+        return conceptScheme
+      },
+    },
+    bibliographicResourceType: {
+        type: ConceptType,
+        description: 'bibliographicResourceType',
+        resolve: async ({bibliographicResourceType}, args,{dataSources}) => {
+          const bibresId =  bibliographicResourceType.split('/').pop()
+          const concept = await dataSources.conceptAPI.getConceptById(bibresId);
+          return concept
+        },
+    },
+    hasNarrower: {
+      type: GraphQLBoolean,
+      resolve: ({narrower}, args) => {
+        const res =  (narrower && (narrower?.length > 0))?true:false
+        return res
+      },
+    },
+    broader: {
+      type: conceptsConnection,
+      description: 'Broader Concepts of the Concept',
+      args: {
+        ...connectionArgs,
+        orderBy: {type: ConceptOrderByType},
+        filters: { type: ConceptFilterType }
+      },
+      resolve: async ({broader}, args,{dataSources}) => {
+        const concepts = await dataSources.conceptAPI.getConceptByIds(broader,args);
+        const totalCount = concepts.length
+        return {
+          ...connectionFromArray([...concepts],args),
+          ...{totalCount : totalCount}
+        }
+      },
+    },
+    narrower: {
+      type: conceptsConnection,
+      description: 'Narrower Concepts of the Concept',
+      args: {
+        ...connectionArgs,
+        orderBy: {type: ConceptOrderByType},
+        filters: { type: ConceptFilterType }
+      },
+      resolve: async ({narrower}, args,{dataSources}) => {
+        const concepts = await dataSources.conceptAPI.getConceptByIds(narrower,args);
+        const totalCount = concepts.length
+        return {
+          ...connectionFromArray([...concepts],args),
+          ...{totalCount : totalCount}
+        }
+      },
+    },
+  }),
+});
+
+const { connectionType: publicationsConnection } = connectionDefinitions({
+  nodeType: ApolloPublicationType,
+  connectionFields: () => ({
+  totalCount: {
+    type: GraphQLInt,
+    resolve: (connection) => connection.totalCount,
+    description: `A count of the total number of objects in this connection, ignoring pagination.
+This allows a client to fetch the first five objects by passing "5" as the
+argument to "first", then fetch the total count so it could display "5 of 83"
+for example.`
+}})});
+
+
+/**
+ * Documents
+ */
+
+
+ const HRLPDocumentType = new GraphQLObjectType({
+  name: 'HRLPDocument',
+  interfaces: [nodeInterface, IApolloDocumentInterface],
+  fields: () => ({
+    id: globalIdField('HRLPDocument'),
+    _id: {type: GraphQLString, description:'Unique URI within Apollo'},
+    created: {
+      type: GraphQLDateTime,
+      resolve: () => faker.date.recent(4)
+    },
+    modified: {
+      type: GraphQLDateTime,
+      resolve: () => faker.date.recent(1)
+    },
+    identifier: { type: GraphQLString },
+    title: {
+      type: GraphQLString,
+      args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
+      resolve: (parent, args,{dataSources}) => {
+        let langText = parent[`title_${args?.language?.toLowerCase()}`]
+        return langText
+      },
+    },   
+    inPublication: {
+      type: ApolloPublicationType,
+      description: 
+      `Publication : unique collection for this type of documents 
+      [MACK Content Expression -> pcicore:isInPublication]`,
+      resolve: async ({inPublication}, args,{dataSources}) => {
+        const pubData = await dataSources.conceptAPI.getConceptById(inPublication);
+        return pubData
+      },
+    }
+
+  }),
+});
+
+const { connectionType: hrlpDocumentConnection } = connectionDefinitions({
+  nodeType: HRLPDocumentType,
+  connectionFields: () => ({
+  totalCount: {
+    type: GraphQLInt,
+    resolve: (connection) => connection.totalCount,
+    description: `A count of the total number of objects in this connection, ignoring pagination.
+This allows a client to fetch the first five objects by passing "5" as the
+argument to "first", then fetch the total count so it could display "5 of 83"
+for example.`
+}})});
+
+
 
 
 // const RaceType = new GraphQLObjectType({
@@ -393,7 +687,7 @@ const queryType = new GraphQLObjectType({
             orderBy: {type: ConceptSchemeOrderByType},
             filters: { type: ConceptSchemeFilterType }
           },
-          resolve: async (_, args,{dataSources}) => {
+          resolve: async (_obj, args,{dataSources}) => {
             const conceptSchemes = await dataSources.conceptSchemeAPI.getConceptSchemes(args);
             const totalCount = conceptSchemes.length
             return {
@@ -408,8 +702,9 @@ const queryType = new GraphQLObjectType({
           args: {
             id: {type:GraphQLNonNull(GraphQLID)}
           },
-          resolve: async (_, args,{dataSources}) => {
-            const conceptScheme = await dataSources.conceptSchemeAPI.getConceptSchemeById(args.id);
+          resolve: async (_obj, args,{dataSources}) => {
+            const {id} = fromGlobalId(args.id)
+            const conceptScheme = await dataSources.conceptSchemeAPI.getConceptSchemeById(id);
             return conceptScheme
           },
         },
@@ -421,7 +716,7 @@ const queryType = new GraphQLObjectType({
             orderBy: {type: ConceptOrderByType},
             filters: { type: ConceptFilterType }
           },
-          resolve: async (_, args,{dataSources}) => {
+          resolve: async (_obj, args,{dataSources}) => {
             const concepts = await dataSources.conceptAPI.getConcepts(args);
             const totalCount = concepts.length
             return {
@@ -430,46 +725,53 @@ const queryType = new GraphQLObjectType({
             }
           },
         },
+        publications: {
+          type: publicationsConnection,
+          description: 'All Publications',
+          args: {
+            ...connectionArgs
+          },
+          resolve: async (_obj, _args,{dataSources}) => {
+            const args = {filters : {bibliographicResourceType : toGlobalId('ApolloPublication','7c688f91-55e0-4a65-aec4-2185b30ef494')}}
+            const publications = await dataSources.conceptAPI.getConcepts(args);
+            const totalCount = publications.length
+            return {
+              ...connectionFromArray([...publications],args),
+              ...{totalCount : totalCount}
+            }
+          },
+        },
         concept: {
-          type: ConceptType,
+          type: IConceptInterface,
           description: 'Get a concept with a GlobalID',
           args: {
             id: {type:GraphQLNonNull(GraphQLID)}
           },
-          resolve: async (_, args,{dataSources}) => {
-            const concept = await dataSources.conceptAPI.getConceptById(args.id);
+          resolve: async (_obj, args,{dataSources}) => {
+            const {id} = fromGlobalId(args.id)
+            const concept = await dataSources.conceptAPI.getConceptById(id);
             return concept
           },
         },
-        // user: {
-        //   type: UserType,
-        //   args: { id: { type: GraphQLID } },
-        //   resolve: (_, args,{dataSources}) => {
-        //     const { id } = fromGlobalId(args.id);
-        //     return dataSources.userAPI.getUser(id);
-        //   },
-        // },
-        // users: {
-        //   type: userConnection,
-        //   description: 'All users',
-        //   args: connectionArgs,
-        //   resolve: async (user, args,{dataSources}) => {
-        //     const users = await dataSources.userAPI.getUsers();
-        //     return connectionFromArray([...users], args);
-        //   },
-        // },
-        // race: {
-        //   type: RaceType,
-        //   args: { id: { type: GraphQLID } },
-        //   resolve: (_, args,{dataSources}) => {
-        //     const { id } = fromGlobalId(args.id);
-        //     return dataSources.userAPI.getRace(id);
-        //   },
-        // },
-        // viewer: {
-        //   type: UserType,
-        //   resolve: (_,args,{dataSources}) => dataSources.userAPI.getViewer(),
-        // },
+        hrlpDocuments: {
+          type: hrlpDocumentConnection,
+          description: 'All HRLP Documents',
+          args: {
+            ...connectionArgs,
+            // orderBy: {type: DocumentOrderByType},
+            // filters: { type: DocumentFilterType }
+          },
+          resolve: async (_obj, args,{dataSources}) => {
+            const publicationId =  toGlobalId('HRLPDocument','hrlp-lippincott-procedures') 
+            const newArgs =  _.merge(args,{filters : {inPublication:publicationId}})
+            const documents = await dataSources.documentAPI.getDocuments(newArgs);
+            const totalCount = documents.length
+            return {
+              ...connectionFromArray([...documents],args),
+              ...{totalCount : totalCount}
+            }  
+          },
+        },
         node: nodeField,
         nodes: nodesField,
       }),

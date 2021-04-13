@@ -24,12 +24,27 @@ module.exports = {
         const {filters} = args
         const filterParams = Object.keys(filters).map((key) => {
             switch (key) {
-                case 'ids':
+                case 'ids': {
                     const conceptFilterArr = filters['ids'].map((globalID) => {
                         const {id } = fromGlobalId(globalID);
                         return `id=${id}`
                     })
                     return conceptFilterArr.join('&')
+                }
+                case 'conceptSchemeId': {
+                    const {id } = fromGlobalId(filters['conceptSchemeId']);
+                    return `inscheme_like=/${id}$`
+                }
+                case 'bibliographicResourceType': {
+                        const {id } = fromGlobalId(filters['bibliographicResourceType']);
+                        return `bibliographicResourceType_like=/${id}$`
+                }
+                case 'inPublication': {
+                    const {id } = fromGlobalId(filters['inPublication']);
+                    return `inPublication=${id}`
+            }
+
+                    bibliographicResourceType
                 // case 'CONCEPTSCHEME_IDS':
                 //         const conceptSchemeFilterArr = filters['CONCEPTSCHEME_IDS'].map((_id) => {
                 //           //  const id =  _id.split('/').pop()
