@@ -3,8 +3,8 @@ const { CheckResultAndHandleErrors } = require("graphql-tools");
 const _ = require('lodash')
 const {getPagingUrl, getFilterUrl, getPagingInfo} = require('./utils')
 const {JSON_DB_URL} = process.env
-const {fromGlobalId} = require('graphql-relay')
-
+const {fromGlobalId, toGlobalId} = require('graphql-relay')
+const { ApolloError } = require('apollo-server-errors');
 
 
 class DocumentAPI extends RESTDataSource{
@@ -106,6 +106,19 @@ class DocumentAPI extends RESTDataSource{
             const {id:transCid} = fromGlobalId(conceptId)
             return transCid
         })
+
+
+
+        // check if concepts are leafs
+        let conceptQueryParamsUrl = transConceptIds.join('&id=')
+        let conceptsData = await this.get(`/concepts/?id=${conceptQueryParamsUrl}`);
+        let notLeafConcepts = conceptsData.map((concept) => {
+            return ((concept.narrower && (concept.narrower.length >0))?toGlobalId('Concept',concept.id):'')
+        })
+        notLeafConcepts = _.compact(notLeafConcepts)
+        if (notLeafConcepts.length > 0) {
+         throw new ApolloError('Only leaf concepts can be used HRLPDocument', 'APOLLO_HRLP_CLASSIFICATION_LEAF_CONCEPTS',{erroneousConcepts:notLeafConcepts})
+        }
         let body = await this.get(`/apollodocuments/${transId}`);
         body.about = _.union(body.about,transConceptIds)
         let _res = await this.put(`/apollodocuments/${transId}`,body)
@@ -120,6 +133,10 @@ class DocumentAPI extends RESTDataSource{
         })
         let body = await this.get(`/apollodocuments/${transId}`);
         body.about = _.pullAll(body.about,transConceptIds)
+       
+        if (body.about.length === 0) {
+            throw new ApolloError('At least one concept is required on a HRLPDocument', 'APOLLO_HRLP_CLASSIFICATION_REQUIRED')
+        }
         let _res = await this.put(`/apollodocuments/${transId}`,body)
         return {id:id}
 
