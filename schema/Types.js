@@ -911,6 +911,27 @@ const AddConceptToHRLPDocumentMutation = mutationWithClientMutationId({
 });
 
 
+const RemoveConcepFromHRLPDocumentMutation = mutationWithClientMutationId({
+    name: 'removeConceptToHRLPDocument',
+    inputFields: {
+      id : { type: new GraphQLNonNull(GraphQLID),description:'HRLPDocument Id' },
+      conceptIds: { type: new GraphQLNonNull( new GraphQLList(GraphQLID)),description:'Concept Ids to be used for classification' }
+    },
+    outputFields: {
+      document: {
+        type: HRLPDocumentType,
+        resolve: (payload,args,{dataSources}) => {
+          const {id:docId} = fromGlobalId(payload.id)
+          return dataSources.documentAPI.getDocumentById(docId)
+        }
+      },
+  },
+  mutateAndGetPayload: ({
+     id, conceptIds
+  },{dataSources}) => dataSources.documentAPI.removeClassification({id, conceptIds}),
+});
+
+
 
 // const AddRaceMutation = mutationWithClientMutationId({
 //     name: 'addRace',
@@ -992,6 +1013,6 @@ module.exports = {
   IApolloDocumentInterface,IConceptInterface,nodeInterface, nodeField, nodesField ,
   ConceptSchemeFilterType, ConceptFilterType, ApolloDocumentFilterType,SearchConceptFilterType,
   ConceptOrderByType, ConceptSchemeOrderByType, ApolloDocumentOrderByType,SearchConceptOrderByType,
-  AddConceptToHRLPDocumentMutation
+  AddConceptToHRLPDocumentMutation,RemoveConcepFromHRLPDocumentMutation
   
 }
