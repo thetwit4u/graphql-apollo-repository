@@ -67,7 +67,8 @@ class ConceptAPI extends RESTDataSource{
     async searchConcepts(args){
         const pagingParams = getPagingUrl(args)
         const filterParams = getFilterUrl(args)
-        const queryParams = [pagingParams,filterParams].join('&')
+        const sortingParams = getSortingUrl(args)
+        const queryParams = [pagingParams,filterParams,sortingParams].join('&')
         const data = await this.get(`/?${queryParams}`);
         // remove concepts based on type filter
         let filteredArray = data
