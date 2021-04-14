@@ -1,5 +1,6 @@
 const { RESTDataSource } = require("apollo-datasource-rest")
 const { CheckResultAndHandleErrors } = require("graphql-tools")
+const { keyBy } = require("lodash")
 const _ = require('lodash')
 const {getPagingUrl, getFilterUrl, getSortingUrl} = require('./utils')
 const {JSON_DB_URL} = process.env
@@ -63,6 +64,36 @@ class ConceptAPI extends RESTDataSource{
         const data = await this.get(`/?${queryParams}`);
         return data;
     }
+    async searchConcepts(args){
+        const pagingParams = getPagingUrl(args)
+        const filterParams = getFilterUrl(args)
+        const queryParams = [pagingParams,filterParams].join('&')
+        const data = await this.get(`/?${queryParams}`);
+        // remove concepts based on type filter
+        let filteredArray = data
+        if (args.filters?.conceptType) {
+            switch (args.filters?.conceptType) {
+                case 'ONLY_LEAF' : {
+                     _.remove(filteredArray, function(o) { 
+                        return (((!(o.narrower === undefined)) && (o.narrower?.length > 0))); 
+                     }); 
+                     break;
+                     
+                }
+                case 'ONLY_TOP' : {
+                    _.remove(filteredArray, function(o) { 
+                        return (((!(o.broader === undefined)) && (o.broader?.length > 0))); 
+                     }); 
+                     break;
+                }
+                default : {
+                }
+            }
+        }
+        return filteredArray;
+    }
+
+    
 }
 
 module.exports = ConceptAPI;

@@ -5,7 +5,14 @@ const TYPES_MAP = {
     'CONTENT_CHANGE' : '22877642-f094-47c1-800a-37f4a41e22cf'
 }
 
-
+const getFilterOnField = (fieldId,{contains,startsWith,endsWith, exactMatch}) => {
+    const searchFilter = []
+    if (contains) {searchFilter.push(`${fieldId}_like=${contains}`)}
+    if (startsWith) {searchFilter.push(`${fieldId}_like=^${startsWith}`)}
+    if (endsWith) {searchFilter.push(`${fieldId}_like=${endsWith}$`)}
+    if (exactMatch) {searchFilter.push(`${fieldId}=${exactMatch}`)}
+    return searchFilter.join('&')
+}
 
 module.exports = {
 
@@ -19,7 +26,7 @@ module.exports = {
         const {offset = 0, limit = 1000} = args
         return `_limit=${limit}&_start=${offset}`
     },
-    getFilterUrl(args, dataSources) {
+    getFilterUrl(args) {
         if (args?.filters === undefined) return
         const {filters} = args
         const filterParams = Object.keys(filters).map((key) => {
@@ -43,24 +50,18 @@ module.exports = {
                     const {id } = fromGlobalId(filters['inPublication']);
                     return `inPublication=${id}`
                 }
-                // case 'CONCEPTSCHEME_IDS':
-                //         const conceptSchemeFilterArr = filters['CONCEPTSCHEME_IDS'].map((_id) => {
-                //           //  const id =  _id.split('/').pop()
-                //             return `inscheme=${_id}`
-                //         })
-                //         return conceptSchemeFilterArr.join('&')
-                // case 'SEARCH':
-                //     return `q=${filters['SEARCH']}`
-                // case 'ORDER_BY':
-                //     const sortArr = filters['ORDER_BY'].split('_')
-                //     const sortOrder = sortArr.pop().toLowerCase()
-                //     const sortField = sortArr?.join('_')
-                //     const sortParams = `_sort=${sortField}&_order=${sortOrder}`
-                //     return sortParams
-                // case 'TYPE':
-                //         const typeFilter = TYPES_MAP[filters['TYPE']]
-                //         const typeParams = `type=${typeFilter}`
-                //         return typeParams
+                case 'prefLabelValue': {
+                    const lang = filters['language'].toLowerCase()
+                    const fieldId = `prefLabel_${lang}`
+                    const searchFilter = []
+                    return getFilterOnField(fieldId,filters['prefLabelValue'])
+                }
+                case 'altLabelValue': {
+                    const lang = filters['language'].toLowerCase()
+                    const fieldId = `altLabel_${lang}`
+                    const searchFilter = []
+                    return getFilterOnField(fieldId,filters['altLabelValue'])
+                }
                 default:
             }
         })

@@ -10,7 +10,9 @@ const faker = require('faker')
 
 
 const DEFAULT_LANGUAGE = 'EN'
-const {LANGUAGE, SORT} = require('./enumTypes')
+const {LANGUAGE, SORT, CONCEPT_TYPE} = require('./enumTypes')
+
+
 
 /**
  * Helper functions
@@ -240,6 +242,48 @@ const ConceptFilterType = new GraphQLInputObjectType({
 
 const ConceptOrderByType = new GraphQLInputObjectType({
   name: 'ConceptOrderBy',
+  fields: () => ({
+    prefLabel_nl: { type: SORT},
+    prefLabel_en: { type: SORT },
+    prefLabel_fr: { type: SORT }
+  })
+});
+
+const LabelSearchOptionType = new GraphQLInputObjectType({
+  name: 'LabelSearchOption',
+  fields: () => ({
+    startsWith :  { 
+      type:  GraphQLString
+    },
+    contains :  { 
+      type:  GraphQLString
+    },
+    endsWith :  { 
+      type:  GraphQLString
+    },
+    exactMatch :  { 
+      type:  GraphQLString
+    },
+  })
+});
+
+const SearchConceptFilterType = new GraphQLInputObjectType({
+  name: 'SearchConceptFilter',
+  fields: () => ({
+    prefLabelValue:  { 
+      type: LabelSearchOptionType
+    },
+    altLabelValue : { 
+      type: LabelSearchOptionType
+    },
+    conceptType : { type: CONCEPT_TYPE,defaultValue: 'ONLY_LEAF' , description: 'Only search for concepts that have no narrower (ONLY_LEAF), topconcepts (ONLY_TOP) or all concepts (ALL)'},
+    language : { type: LANGUAGE,defaultValue: DEFAULT_LANGUAGE , description: 'Language to search in'},
+  })
+});
+
+
+const SearchConceptOrderByType = new GraphQLInputObjectType({
+  name: 'SearchConceptOrderBy',
   fields: () => ({
     prefLabel_nl: { type: SORT},
     prefLabel_en: { type: SORT },
@@ -901,6 +945,6 @@ module.exports = {
   ConceptSchemeType, ConceptType,
   WKBENewsType,WKBELegislationType,HRLPDocumentType,ApolloPublicationType,
   IApolloDocumentInterface,IConceptInterface,nodeInterface, nodeField, nodesField ,
-  ConceptSchemeFilterType, ConceptFilterType, ApolloDocumentFilterType,
-  ConceptOrderByType, ConceptSchemeOrderByType, ApolloDocumentOrderByType
+  ConceptSchemeFilterType, ConceptFilterType, ApolloDocumentFilterType,SearchConceptFilterType,
+  ConceptOrderByType, ConceptSchemeOrderByType, ApolloDocumentOrderByType,SearchConceptOrderByType
 }

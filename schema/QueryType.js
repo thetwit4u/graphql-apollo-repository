@@ -3,8 +3,8 @@ const {
     ConceptSchemeType, ConceptType,
     WKBENewsType,WKBELegislationType,HRLPDocumentType,ApolloPublicationType,
     IApolloDocumentInterface,IConceptInterface,nodeInterface, nodeField, nodesField ,
-    ConceptSchemeFilterType, ConceptFilterType, ApolloDocumentFilterType,
-    ConceptOrderByType, ConceptSchemeOrderByType, ApolloDocumentOrderByType
+    ConceptSchemeFilterType, ConceptFilterType, ApolloDocumentFilterType,SearchConceptFilterType,
+    ConceptOrderByType, ConceptSchemeOrderByType, ApolloDocumentOrderByType,SearchConceptOrderByType
   } = require('./Types')
 const _ = require('lodash')
 const { fromGlobalId,  toGlobalId,connectionFromArray, connectionArgs} = require('graphql-relay')
@@ -77,7 +77,24 @@ const queryType = new GraphQLObjectType({
               const concept = await dataSources.conceptAPI.getConceptById(searchId);
               return concept
             },
-          },
+        },
+        searchConcepts: {
+            type: conceptsConnection,
+            description: 'Search Concepts in Apollo based on Labels',
+            args: {
+                ...connectionArgs,
+                orderBy: {type: SearchConceptOrderByType},
+                filters: { type: new GraphQLNonNull(SearchConceptFilterType)}
+            },
+            resolve: async (_obj, args,{dataSources}) => {
+                const concepts = await dataSources.conceptAPI.searchConcepts(args);
+                const totalCount = concepts.length
+                return {
+                ...connectionFromArray([...concepts],args),
+                ...{totalCount : totalCount}
+                }  
+            }
+        },
         publications: {
           type: publicationsConnection,
           description: 'All Publications',
@@ -142,6 +159,25 @@ const queryType = new GraphQLObjectType({
             },
             resolve: async (_obj, args,{dataSources}) => {
               const publicationId =  toGlobalId('WKBENews','wkbe-news') 
+              const newArgs =  _.merge(args,{filters : {inPublication:publicationId}})
+              const documents = await dataSources.documentAPI.getDocuments(newArgs);
+              const totalCount = documents.length
+              return {
+                ...connectionFromArray([...documents],args),
+                ...{totalCount : totalCount}
+              }  
+            },
+          },
+        wkbeLegislationDocuments: {
+            type: wkbeLegislationConnection,
+            description: 'All WKBE Legislation Documents',
+            args: {
+              ...connectionArgs,
+              // orderBy: {type: DocumentOrderByType},
+              // filters: { type: DocumentFilterType }
+            },
+            resolve: async (_obj, args,{dataSources}) => {
+              const publicationId =  toGlobalId('WKBELegislation','wkbe-legislation') 
               const newArgs =  _.merge(args,{filters : {inPublication:publicationId}})
               const documents = await dataSources.documentAPI.getDocuments(newArgs);
               const totalCount = documents.length

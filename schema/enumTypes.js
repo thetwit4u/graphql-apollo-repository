@@ -19,4 +19,13 @@ const LANGUAGE = new GraphQLEnumType({
     },
   });
 
-  module.exports = {LANGUAGE, SORT}
+  const CONCEPT_TYPE = new GraphQLEnumType({
+    name: 'CONCEPT_TYPE',
+    values: {
+      ONLY_LEAF :{},
+      ONLY_TOP : {},
+      ALL : {}
+    },
+  });
+
+  module.exports = {LANGUAGE, SORT, CONCEPT_TYPE}
