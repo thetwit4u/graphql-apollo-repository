@@ -18,12 +18,21 @@ const {LANGUAGE, SORT, CONCEPT_TYPE} = require('./enumTypes')
  * Helper functions
  */
  const generateRandomText = () => {
-  const nbTextParts = Array.from(Array(faker.datatype.number(4)).keys())
+  const nbTextParts = Array.from(Array(faker.datatype.number({
+    'min': 1,
+    'max': 4
+})).keys())
   
   const text = nbTextParts.map(() => {
     const title = `<h2>${faker.lorem.sentence()}</h2>`
-    const nbTextParafs =  Array.from(Array(faker.datatype.number(5)).keys())
-    const textParts = nbTextParafs.map(() => {return `<p>${faker.lorem.paragraph(faker.datatype.number(12))}}</p>`})
+    const nbTextParafs =  Array.from(Array(faker.datatype.number({
+      'min': 2,
+      'max': 5
+  })).keys())
+    const textParts = nbTextParafs.map(() => {return `<p>${faker.lorem.paragraph(faker.datatype.number({
+      'min': 3,
+      'max': 12
+  }))}</p>`})
 
     return `${title}${textParts.join('')}`
  })
@@ -817,6 +826,7 @@ const ContentDataType = new GraphQLObjectType({
   }),
 });
 
+
 /**
  * Connection Types
  */
@@ -863,6 +873,41 @@ const { connectionType: wkbeLegislationConnection } = connectionDefinitions({
 const { connectionType: wkbeNewsConnection } = connectionDefinitions({
   nodeType: WKBENewsType,
   connectionFields: () => ({...totalCountConfig})
+});
+
+
+
+/***
+ * Mutation Config
+ */
+
+
+//  const AddConceptToHRLPDocumentInputType = new GraphQLInputObjectType({
+//   name: 'AddConceptToHRLPDocumentInput',
+//   fields: {
+//     id : { type: new GraphQLNonNull(GraphQLID),description:'HRLPDocument Id' },
+//     conceptIds: { type: new GraphQLNonNull( new GraphQLList(GraphQLID)),description:'Concept Ids to be used for classification' }
+//   }
+// })
+
+const AddConceptToHRLPDocumentMutation = mutationWithClientMutationId({
+  name: 'addConceptToHRLPDocument',
+  inputFields: {
+    id : { type: new GraphQLNonNull(GraphQLID),description:'HRLPDocument Id' },
+    conceptIds: { type: new GraphQLNonNull( new GraphQLList(GraphQLID)),description:'Concept Ids to be used for classification' }
+  },
+  outputFields: {
+      document: {
+        type: HRLPDocumentType,
+        resolve: (payload,args,{dataSources}) => {
+          const {id:docId} = fromGlobalId(payload.id)
+          return dataSources.documentAPI.getDocumentById(docId)
+        }
+      },
+  },
+  mutateAndGetPayload: ({
+     id, conceptIds
+  },{dataSources}) => dataSources.documentAPI.addClassification({id, conceptIds}),
 });
 
 
@@ -946,5 +991,7 @@ module.exports = {
   WKBENewsType,WKBELegislationType,HRLPDocumentType,ApolloPublicationType,
   IApolloDocumentInterface,IConceptInterface,nodeInterface, nodeField, nodesField ,
   ConceptSchemeFilterType, ConceptFilterType, ApolloDocumentFilterType,SearchConceptFilterType,
-  ConceptOrderByType, ConceptSchemeOrderByType, ApolloDocumentOrderByType,SearchConceptOrderByType
+  ConceptOrderByType, ConceptSchemeOrderByType, ApolloDocumentOrderByType,SearchConceptOrderByType,
+  AddConceptToHRLPDocumentMutation
+  
 }

@@ -100,6 +100,19 @@ class DocumentAPI extends RESTDataSource{
         const data = await this.get(`/apollodocuments/?${queryParams}`);
         return data;
     }
+    async addClassification({id, conceptIds}) {
+        console.log(conceptIds)
+        const {id:transId} = fromGlobalId(id)
+        const transConceptIds = conceptIds.map((conceptId) => {
+            const {id:transCid} = fromGlobalId(conceptId)
+            return transCid
+        })
+        console.log(transId)
+        console.log(transConceptIds)
+        return {id:id}
+
+    }
+    
 
     
 
