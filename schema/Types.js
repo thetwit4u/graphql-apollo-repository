@@ -281,6 +281,7 @@ const LabelSearchOptionType = new GraphQLInputObjectType({
 const SearchConceptFilterType = new GraphQLInputObjectType({
   name: 'SearchConceptFilter',
   fields: () => ({
+    conceptSchemeId : { type: GraphQLID},
     prefLabelValue:  { 
       type: LabelSearchOptionType
     },
