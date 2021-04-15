@@ -32,14 +32,21 @@ const queryType = new GraphQLObjectType({
         },
         conceptScheme: {
           type: ConceptSchemeType,
-          description: 'Get a conceptscheme with GlobalID',
+          description: 'Get one conceptScheme with GlobalID or Apollo URI',
           args: {
-            id: {type:GraphQLNonNull(GraphQLID)}
+            id: {type:GraphQLID},
+            _id: {type:GraphQLString}
           },
           resolve: async (_obj, args,{dataSources}) => {
-            const {id} = fromGlobalId(args.id)
-            const conceptScheme = await dataSources.conceptSchemeAPI.getConceptSchemeById(id);
-            return conceptScheme
+            let searchId;
+            if (args._id) {
+              searchId =  args._id.split('/').pop()
+            } else {
+              const {id} = fromGlobalId(args.id)
+              searchId = id
+            }
+            const concept = await dataSources.conceptSchemeAPI.getConceptSchemeById(searchId);
+            return concept
           },
         },
         concepts: {
@@ -61,7 +68,7 @@ const queryType = new GraphQLObjectType({
         },
         concept: {
             type: IConceptInterface,
-            description: 'Get a concept with a GlobalID',
+            description: 'Get a concept with a GlobalID or Apollo URI',
             args: {
               id: {type:GraphQLID},
               _id: {type:GraphQLString}
@@ -80,7 +87,7 @@ const queryType = new GraphQLObjectType({
         },
         searchConcepts: {
             type: conceptsConnection,
-            description: 'Search Concepts in Apollo based on Labels',
+            description: 'Search Concepts in Apollo based on prefLabels or altLabels',
             args: {
                 ...connectionArgs,
                 orderBy: {type: SearchConceptOrderByType},
@@ -116,8 +123,6 @@ const queryType = new GraphQLObjectType({
           description: 'All HRLP Documents',
           args: {
             ...connectionArgs,
-            // orderBy: {type: DocumentOrderByType},
-            // filters: { type: DocumentFilterType }
           },
           resolve: async (_obj, args,{dataSources}) => {
             const publicationId =  toGlobalId('HRLPDocument','hrlp-lippincott-procedures') 
@@ -132,7 +137,7 @@ const queryType = new GraphQLObjectType({
         },
         apolloDocument: {
             type: IApolloDocumentInterface,
-            description: 'Get an ApolloDocument',
+            description: 'Get an ApolloDocument with GlobalID or Apollo URI',
             args: {
               id: {type:GraphQLID},
               _id: {type:GraphQLString}

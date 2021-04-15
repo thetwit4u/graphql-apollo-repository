@@ -45,20 +45,21 @@ const {LANGUAGE, SORT, CONCEPT_TYPE} = require('./enumTypes')
 
 
 const IApolloDocumentInterface = new GraphQLInterfaceType({
+  description: 'Apollo Document Interface should be supported by each document type within the CMS *[[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content)]*',
   name: 'IApolloDocument',
   fields: () => ({
     id: {
       type: new GraphQLNonNull(GraphQLID)
     },
     _id: {type: GraphQLString, description:'Unique URI within Apollo'},
-    identifier: {type: GraphQLString, description:'derived from MACK Content Expression'},
+    identifier: {type: GraphQLString, description:'Unique identifier *[[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Expression -> dcterms:identifier]*'},
     title: {
       type: GraphQLString,
-      description: 'derived from MACK Content Expression',
+      description: 'Main Title within Apollo CMS *[[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Expression -> dcterms:title]*',
       args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
     },
-    inPublication: {type: ApolloPublicationType, description:'derived from bibliographicResourceType MACK Content Expression'},
-    about: {type: conceptsConnection, description:'[MACK Content Expression -> pcicore:isAbout]'},
+    inPublication: {type: ApolloPublicationType, description:'Apollo Publication of the document *[[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Expression -> bibliographicResourceType]*'},
+    about: {type: conceptsConnection, description:'General classification of the document *[[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Expression -> pcicore:isAbout]*'},
   }),
   resolveType: (obj) => {
       if(obj.inPublication === 'wkbe-news'){
@@ -407,6 +408,43 @@ const ConceptType = new GraphQLObjectType({
   }),
 });
 
+/**
+ * MACK provenance
+ *
+ */
+
+const MACKProvenanceType = new GraphQLObjectType({
+  name: 'MACKProvenance',
+  description: `Management data of a resource, i.e. metadata about each change of a resource in the CMS *[[MACK Provenance](https://confluence.wolterskluwer.io/display/AP/MACK+Provenance)]*`,
+  interfaces: [nodeInterface],
+  fields: () => ({
+    id: globalIdField('MACKProvenance'),
+    _id: {type: GraphQLString, description:'Unique URI within Apollo'},
+    created: {
+      type: GraphQLDateTime,
+      description: `Date of first admission of a resource in the Apollo CMS. *[[MACK Provenance](https://confluence.wolterskluwer.io/display/AP/MACK+Provenance)  -> dcterms:modified]*`,
+      resolve: () => faker.date.recent(4)
+    },
+    contributor: {
+      type: GraphQLString,
+      description: `Agent technically responsible for creation or change of resource in the Apollo CMS. *[[MACK Provenance](https://confluence.wolterskluwer.io/display/AP/MACK+Provenance) -> dcterms:contributor]*`,
+      resolve: () => faker.name.lastName(),
+    },
+    modified: {
+      type: GraphQLDateTime,
+      description: `Date of change of a resource in the Apollo CMS *[[MACK Provenance](https://confluence.wolterskluwer.io/display/AP/MACK+Provenance) -> dcterms:created]*`,
+      resolve: () => faker.date.recent(1)
+    },
+    type: {
+        type: ConceptType,
+        description: 'Type of change of the resource in the Apollo CMS, indicating the reason why it has been changed *[[MACK Provenance](https://confluence.wolterskluwer.io/display/AP/MACK+Provenance) -> dcterms:type]*',
+        resolve: async ({type}, args,{dataSources}) => {
+          const concept = await dataSources.conceptAPI.getConceptById(type);
+          return concept
+        },
+    },
+  }),
+});
 
 
 
@@ -417,10 +455,12 @@ const ConceptType = new GraphQLObjectType({
 
  const ApolloPublicationType = new GraphQLObjectType({
   name: 'ApolloPublication',
+  description: `Publication is the abstract notion of a 'bundle' of content, that a publisher recognizes as one product. *[[MACK Publication](https://confluence.wolterskluwer.io/display/AP/MACK+Publication)]* `,
   interfaces: [nodeInterface, IConceptInterface],
   fields: () => ({
     id: globalIdField('ApolloPublication'),
     _id: {type: GraphQLString, description:'Unique URI within Apollo'},
+    identifier: {type: GraphQLString, description:'The unique id of the publication as used in the publication controlled vocabulary.*[[MACK Publication](https://confluence.wolterskluwer.io/display/AP/MACK+Publication) -> dcterms:identifier]*'},
     created: {
       type: GraphQLDateTime,
       resolve: () => faker.date.recent(4)
@@ -455,6 +495,7 @@ const ConceptType = new GraphQLObjectType({
     },
     title: {
       type: GraphQLString,
+      description: `Title of the publication *[[MACK Provenance](https://confluence.wolterskluwer.io/display/AP/MACK+Provenance) -> dcterms:title ]*`,
       args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
       resolve: (parent, args) => {
         let langText = parent[`title_${args?.language?.toLowerCase()}`]
@@ -560,6 +601,7 @@ const ApolloDocumentOrderByType = new GraphQLInputObjectType({
 
  const HRLPDocumentType = new GraphQLObjectType({
   name: 'HRLPDocument',
+  description: `HRLPDocument based on ApolloDocument Interface *[[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content)]*`,
   interfaces: [nodeInterface, IApolloDocumentInterface],
   fields: () => ({
     id: globalIdField('HRLPDocument'),
@@ -592,8 +634,7 @@ const ApolloDocumentOrderByType = new GraphQLInputObjectType({
     inPublication: {
       type: ApolloPublicationType,
       description: 
-      `Publication : unique collection for this type of documents 
-      [MACK Content Expression -> pcicore:isInPublication]`,
+      `Unique collection for this type of documents *[[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Expression -> pcicore:isInPublication]*`,
       resolve: async ({inPublication}, args,{dataSources}) => {
         const pubData = await dataSources.conceptAPI.getConceptById(inPublication);
         return pubData
@@ -601,7 +642,7 @@ const ApolloDocumentOrderByType = new GraphQLInputObjectType({
     },
     about: {
       type: conceptsConnection,
-      description: 'HRLP Classification',
+      description: `HRLP Classification *[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Expression -> pcicore:isAbout]*`,
       args: {
         ...connectionArgs,
         orderBy: {type: ConceptOrderByType},
@@ -633,21 +674,63 @@ const ApolloDocumentOrderByType = new GraphQLInputObjectType({
 
 const WKBENewsType = new GraphQLObjectType({
   name: 'WKBENews',
+  description : `WKBE Specific Implementation of News Document *[[See Mapping Apollo - News](https://confluence.wolterskluwer.io/display/AP/3.+Mapping+Brons+to+Apollo+-+News)]*`,
   interfaces: [nodeInterface, IApolloDocumentInterface],
   fields: () => ({
     id: globalIdField('WKBENews'),
-    _id: {type: GraphQLString, description:'Unique URI within Apollo'},
+    _id: {type: GraphQLString, description:`
+    Unique URI of the document 
+    *[[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Work]*`},
+    identifier: { type: GraphQLString,description:`
+    Unique identifier of the document
+    *[[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Work -> dcterms:identifier]*` },
+    language: {
+      type: ConceptType,
+      description: 
+      `Language of the document
+      *[[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) -> dcterms:language]*`,
+      resolve: async ({language}, args,{dataSources}) => {
+        const languageData = await dataSources.conceptAPI.getConceptById(language);
+        return languageData
+      },
+    },
+    languageVariant: {
+      type: WKBENewsType,
+      description: 
+      `Link to other language
+      *[[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Work -> pcicore:hasLanguageVariant]*`,
+      resolve: async ({languageVariant}, args,{dataSources}) => {
+        const languageVariantData = await dataSources.documentAPI.getDocumentById(languageVariant);
+        return languageVariantData
+      },
+    },
+    
     created: {
       type: GraphQLDateTime,
       resolve: () => faker.date.recent(4)
+    },
+    creator: {
+      type: GraphQLString,
+      description:`Comma-seperated list of authors *[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Expression -> dcterms:creator]*`,
+      resolve: () => `${faker.name.lastName()} ${faker.name.lastName()}`,
+    },
+    bibliographicResourceType: {
+      type: ApolloPublicationType,
+      description: 
+      `Type of the document *[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) -> pcicore:hasBibliographicResourceType]*`,
+      resolve: async ({bibliographicResourceType}, args,{dataSources}) => {
+        const bibData = await dataSources.conceptAPI.getConceptById(bibliographicResourceType);
+        return bibData
+      },
     },
     modified: {
       type: GraphQLDateTime,
       resolve: () => faker.date.recent(1)
     },
-    identifier: { type: GraphQLString },
+
     title: {
       type: GraphQLString,
+      description: `Title of the document *[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Expression -> dcterms:title]*`,
       args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
       resolve: (parent, args,{dataSources}) => {
         let langText = parent[`title_${args?.language?.toLowerCase()}`]
@@ -658,7 +741,7 @@ const WKBENewsType = new GraphQLObjectType({
       type: ApolloPublicationType,
       description: 
       `Publication : unique collection for this type of documents 
-      [MACK Content Expression -> pcicore:isInPublication]`,
+      *[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Expression -> pcicore:isInPublication]*`,
       resolve: async ({inPublication}, args,{dataSources}) => {
         const pubData = await dataSources.conceptAPI.getConceptById(inPublication);
         return pubData
@@ -666,8 +749,7 @@ const WKBENewsType = new GraphQLObjectType({
     },
     about: {
       type: conceptsConnection,
-      description: `Subjectregister concepts inherited the first time from the source law.  Can be manually updated afterwards by the author.
-      [MACK Content Expression -> pcicore:isAbout]`,
+      description: `Subjectregister concepts inherited the first time from the source law.  Can be manually updated afterwards by the author. *[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Expression -> pcicore:isAbout]*`,
       args: {
         ...connectionArgs,
         orderBy: {type: ConceptOrderByType},
@@ -682,13 +764,128 @@ const WKBENewsType = new GraphQLObjectType({
         }
       },
     },
+    practiceArea :{
+      type: conceptsConnection,
+      description: `News domains *[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Content Expression -> pcilr:hasPracticeArea]*`,
+      args: {
+        ...connectionArgs,
+        orderBy: {type: ConceptOrderByType},
+        filters: { type: ConceptFilterType }
+      },
+      resolve: async ({practiceArea}, args,{dataSources}) => {
+        const practiceAreaData = await dataSources.conceptAPI.getConceptByIds(practiceArea,args);
+        const totalCount = practiceAreaData.length
+        return {
+          ...connectionFromArray([...practiceAreaData],args),
+          ...{totalCount : totalCount}
+        }
+      },     
+    },
+    primarySource: {
+      type: IApolloDocumentInterface,
+      description: `Primary Source of News *[MACK Based on relation](https://confluence.wolterskluwer.io/display/AP/MACK+Based+on+relation) -> "Dependency Relationship Type"]*`,
+      args: {
+        ...connectionArgs,
+        orderBy: {type: ConceptOrderByType},
+        filters: { type: ConceptFilterType }
+      },
+      resolve: async ({primarySource}, args,{dataSources}) => {
+        const primarySourceData = await dataSources.documentAPI.getDocumentById(primarySource,args);
+        return primarySourceData
+      },         
+    },
+    provenances: {
+      type: mackProvenanceConnection,
+      description: `List of creation and modification events based on *[MACK Provenance](https://confluence.wolterskluwer.io/display/AP/MACK+Provenance)`,
+      args: {
+        ...connectionArgs,
+      },
+      resolve: async ({provenances}, args,{dataSources}) => {
+        const provenanceData = await dataSources.documentAPI.getProvenanceByIds(provenances,args);
+        const totalCount = provenanceData.length
+        return {
+          ...connectionFromArray([...provenanceData],args),
+          ...{totalCount : totalCount}
+        }
+      }, 
+    },
+    content: {
+      type: ContentDataType,
+      description: 
+      `The manifestation of the document *[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Manifestion -> frbr:embodiment]*`,
+      resolve: async ({content}, args,{dataSources}) => {
+        const contentData = await dataSources.documentAPI.getContentById(content);
+        return contentData
+      },
+    },
 
   }),
 });
 
-
+// """
+//     Brons Identifier
+//     [MACK Content Set -> MACK Alternative Identifier]
+//     """
+//     alternativeId: String
+//     """
+//     Title of the law in multiple languages
+//     [MACK Content Expression -> dcterms:title]
+//     """
+//     title(language:Language = EN): String 
+//     """
+//     Legislation type
+//     [MACK Content Work -> pcicore:hasBibliographicResourceType]
+//     """
+//     bibliographicResourceType: Concept!
+//     """
+//     Publication of the document
+//     [MACK Content Expression -> pcicore:isInPublication]
+//     """
+//     inPublication: ApolloPublication
+//     """ 
+//     Subjectregister concepts 
+//     [MACK Content Expression -> pcicore:isAbout]
+//     """
+//     about: [Concept]
+//     """ 
+//     Short titles of the law
+//     [MACK Content Set -> MACKBibliographicReference (type : WK regulation identifier)]
+//     """
+//     shortTitles: MACKBibliographicReference
+//     """ 
+//     Official title of the law
+//     [MACK Content Set -> MACKBibliographicReference (type : Official regulation identifier)]
+//     """
+//     officialTitle: MACKBibliographicReference
+//     """ 
+//     Title for print purposes
+//     [MACK Content Set -> MACKBibliographicReference (type : Print regulation identifier)]
+//     """
+//     printTitle: MACKBibliographicReference
+//     """ 
+//     promulgation date (signed by legislative body)
+//     [MACK Content Set -> dcterms:issued]
+//     """
+//     issued: Date
+//     """ 
+//     date of publication in official journal 
+//     [MACK Content Set -> pcicore:hasPublicationDate]
+//     """
+//     publicationDate: Date
+//     """ 
+//     'WKBE Source' where the legislation was published
+//     [MACK Content Set -> pcicore:isInPublication]
+//     """
+//     source: Concept
+//     """ 
+//     WKBE Territorial application
+//     [MACK Content Expression -> pcicore:coversLocation]
+//     """
+//     territorialApplication: [Concept]
+//     """ 
 const WKBELegislationType = new GraphQLObjectType({
   name: 'WKBELegislation',
+  description : `WKBE Specific Implementation of Legislation Document *[[See Mapping Apollo - Legislation](https://confluence.wolterskluwer.io/display/AP/2.+Mapping+Brons+to+Apollo+-+Legislation)]*`,
   interfaces: [nodeInterface, IApolloDocumentInterface],
   fields: () => ({
     id: globalIdField('WKBELegislation'),
@@ -702,6 +899,10 @@ const WKBELegislationType = new GraphQLObjectType({
       resolve: () => faker.date.recent(1)
     },
     identifier: { type: GraphQLString },
+    alternativeId: { 
+      type: GraphQLString,
+      description: `Brons Identifier *[[MACK Content Set](https://confluence.wolterskluwer.io/display/AP/MACK+Content+Set) -> [MACK Alternative Identifier](https://confluence.wolterskluwer.io/display/AP/MACK+Alternative+Identifier)]*`
+    },
     title: {
       type: GraphQLString,
       args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
@@ -714,7 +915,7 @@ const WKBELegislationType = new GraphQLObjectType({
       type: ApolloPublicationType,
       description: 
       `Publication : unique collection for this type of documents 
-      [MACK Content Expression -> pcicore:isInPublication]`,
+      *[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Expression -> pcicore:isInPublication]*`,
       resolve: async ({inPublication}, args,{dataSources}) => {
         const pubData = await dataSources.conceptAPI.getConceptById(inPublication);
         return pubData
@@ -723,7 +924,7 @@ const WKBELegislationType = new GraphQLObjectType({
     about: {
       type: conceptsConnection,
       description: `Subjectregister concepts classification managed in Brons and cannot be modified in Apollo.
-      [MACK Content Expression -> pcicore:isAbout]`,
+      *[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Expression -> pcicore:isAbout]*`,
       args: {
         ...connectionArgs,
         orderBy: {type: ConceptOrderByType},
@@ -743,6 +944,7 @@ const WKBELegislationType = new GraphQLObjectType({
 
 const ContentDataType = new GraphQLObjectType({
   name: 'ContentData',
+  description : `Content can be retrieved directly from Alfresco`,
   interfaces: [nodeInterface],
   fields: () => ({
     id: globalIdField('ContentData'),
@@ -750,6 +952,7 @@ const ContentDataType = new GraphQLObjectType({
     identifier: { type: GraphQLString },
     type: {
       type: ConceptType,
+      description: `MIMEType of the content available in Controlled Vocabulary`,
       resolve: async ({type}, args,{dataSources}) => {
         const typeData = await dataSources.conceptAPI.getConceptById(type);
         return typeData
@@ -785,42 +988,6 @@ const ContentDataType = new GraphQLObjectType({
       description:'Content Size in bytes',
       resolve: (parent, args,{dataSources}) => {
         return faker.datatype.number({options:{min:4000,max:100000}})
-      },
-    },
-    title: {
-      type: GraphQLString,
-      args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
-      resolve: (parent, args,{dataSources}) => {
-        let langText = parent[`title_${args?.language?.toLowerCase()}`]
-        return langText
-      },
-    },   
-    inPublication: {
-      type: ApolloPublicationType,
-      description: 
-      `Publication : unique collection for this type of documents 
-      [MACK Content Expression -> pcicore:isInPublication]`,
-      resolve: async ({inPublication}, args,{dataSources}) => {
-        const pubData = await dataSources.conceptAPI.getConceptById(inPublication);
-        return pubData
-      },
-    },
-    about: {
-      type: conceptsConnection,
-      description: `Subjectregister concepts classification managed in Brons and cannot be modified in Apollo.
-      [MACK Content Expression -> pcicore:isAbout]`,
-      args: {
-        ...connectionArgs,
-        orderBy: {type: ConceptOrderByType},
-        filters: { type: ConceptFilterType }
-      },
-      resolve: async ({about}, args,{dataSources}) => {
-        const concepts = await dataSources.conceptAPI.getConceptByIds(about,args);
-        const totalCount = concepts.length
-        return {
-          ...connectionFromArray([...concepts],args),
-          ...{totalCount : totalCount}
-        }
       },
     },
   }),
@@ -875,23 +1042,19 @@ const { connectionType: wkbeNewsConnection } = connectionDefinitions({
   connectionFields: () => ({...totalCountConfig})
 });
 
+const { connectionType: mackProvenanceConnection } = connectionDefinitions({
+  nodeType: MACKProvenanceType,
+  connectionFields: () => ({...totalCountConfig})
+});
 
 
 /***
  * Mutation Config
  */
 
-
-//  const AddConceptToHRLPDocumentInputType = new GraphQLInputObjectType({
-//   name: 'AddConceptToHRLPDocumentInput',
-//   fields: {
-//     id : { type: new GraphQLNonNull(GraphQLID),description:'HRLPDocument Id' },
-//     conceptIds: { type: new GraphQLNonNull( new GraphQLList(GraphQLID)),description:'Concept Ids to be used for classification' }
-//   }
-// })
-
 const AddConceptToHRLPDocumentMutation = mutationWithClientMutationId({
   name: 'addConceptToHRLPDocument',
+  description : `Add one or more concept (only leaf concepts) to the HRLPDocument.  Concepts that are already present will be ignored`,
   inputFields: {
     id : { type: new GraphQLNonNull(GraphQLID),description:'HRLPDocument Id' },
     conceptIds: { type: new GraphQLNonNull( new GraphQLList(GraphQLID)),description:'Concept Ids to be used for classification' }
@@ -913,6 +1076,7 @@ const AddConceptToHRLPDocumentMutation = mutationWithClientMutationId({
 
 const RemoveConcepFromHRLPDocumentMutation = mutationWithClientMutationId({
     name: 'removeConceptToHRLPDocument',
+    description : `Remove one or more concept from the HRLPDocument. A minimum of 1 concept is required`,
     inputFields: {
       id : { type: new GraphQLNonNull(GraphQLID),description:'HRLPDocument Id' },
       conceptIds: { type: new GraphQLNonNull( new GraphQLList(GraphQLID)),description:'Concept Ids to be used for classification' }
