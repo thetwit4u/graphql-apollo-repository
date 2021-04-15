@@ -447,6 +447,37 @@ const MACKProvenanceType = new GraphQLObjectType({
   }),
 });
 
+/**
+ *  MACK BibliographicReference
+ *
+ */
+
+const MACKBibliographicReferenceType = new GraphQLObjectType({
+  name: 'MACKBibliographicReference',
+  description: `Container that groups together all information needed to create bibliographic references to primary content and editorial content such as books, magazines, commentaries on law and jurisprudence.  *[[MACK Bibliographic Reference](https://confluence.wolterskluwer.io/display/AP/MACK+Bibliographic+Reference)]*`,
+  interfaces: [nodeInterface],
+  fields: () => ({
+    id: globalIdField('MACKBibliographicReference'),
+    _id: {type: GraphQLString, description:'Unique URI within Apollo'},
+    identifier: {type: GraphQLString, description:'The unique id of the reference *[dcterms:identifier]*'},
+    prefLabel: {
+      type: GraphQLString,
+      args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
+      resolve: (parent, args) => {
+        let langText = parent[`prefLabel_${args?.language?.toLowerCase()}`]
+        return langText
+      },
+    },
+    altLabels: {
+      type: new GraphQLList(GraphQLString),
+      args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
+      resolve: (parent, args) => {
+        let langText = parent[`altLabels_${args?.language?.toLowerCase()}`]
+        return langText
+      },
+    },
+  })
+ })
 
 
 /**
@@ -823,32 +854,10 @@ const WKBENewsType = new GraphQLObjectType({
   }),
 });
 
-// """
-//     Brons Identifier
-//     [MACK Content Set -> MACK Alternative Identifier]
-//     """
-//     alternativeId: String
-//     """
-//     Title of the law in multiple languages
-//     [MACK Content Expression -> dcterms:title]
-//     """
-//     title(language:Language = EN): String 
-//     """
-//     Legislation type
-//     [MACK Content Work -> pcicore:hasBibliographicResourceType]
-//     """
-//     bibliographicResourceType: Concept!
-//     """
-//     Publication of the document
-//     [MACK Content Expression -> pcicore:isInPublication]
-//     """
-//     inPublication: ApolloPublication
-//     """ 
-//     Subjectregister concepts 
-//     [MACK Content Expression -> pcicore:isAbout]
-//     """
-//     about: [Concept]
-//     """ 
+
+
+
+
 //     Short titles of the law
 //     [MACK Content Set -> MACKBibliographicReference (type : WK regulation identifier)]
 //     """
@@ -906,12 +915,53 @@ const WKBELegislationType = new GraphQLObjectType({
     },
     title: {
       type: GraphQLString,
+      description: ` Title of the law in multiple languages *[[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Expression -> dcterms:title]*`,
       args: { language: { type: LANGUAGE, defaultValue: DEFAULT_LANGUAGE } },
       resolve: (parent, args,{dataSources}) => {
         let langText = parent[`title_${args?.language?.toLowerCase()}`]
         return langText
       },
     },   
+    shortTitles: {
+      type: MACKBibliographicReferenceType,
+      description: 
+      `skos:prefLabel -> brons:title,  skos:altLabels -> brons:short-title type=altaard + date of legislation
+      *[MACK Content Set](https://confluence.wolterskluwer.io/display/AP/MACK+Content+Set) -> [MACK BibliographicReference](https://confluence.wolterskluwer.io/display/AP/MACK+Bibliographic+Reference) *`,
+      resolve: async ({shortTitles}, args,{dataSources}) => {
+        const bibRef = await dataSources.documentAPI.getBibliographicReferenceById(shortTitles);
+        return bibRef
+      },
+    },
+    officialTitle: {
+      type: MACKBibliographicReferenceType,
+      description: 
+      `skos:prefLabel -> brons:title
+      *[MACK Content Set](https://confluence.wolterskluwer.io/display/AP/MACK+Content+Set) -> [MACK BibliographicReference](https://confluence.wolterskluwer.io/display/AP/MACK+Bibliographic+Reference) *`,
+      resolve: async ({officialTitle}, args,{dataSources}) => {
+        const bibRef = await dataSources.documentAPI.getBibliographicReferenceById(officialTitle);
+        return bibRef
+      },
+    },
+    printTitle: {
+      type: MACKBibliographicReferenceType,
+      description: 
+      `skos:prefLabel ->	brons:short-title type=nietgang
+      *[MACK Content Set](https://confluence.wolterskluwer.io/display/AP/MACK+Content+Set) -> [MACK BibliographicReference](https://confluence.wolterskluwer.io/display/AP/MACK+Bibliographic+Reference) *`,
+      resolve: async ({printTitle}, args,{dataSources}) => {
+        const bibRef = await dataSources.documentAPI.getBibliographicReferenceById(printTitle);
+        return bibRef
+      },
+    },
+    bibliographicResourceType: {
+      type: ConceptType,
+      description: `Legislation type *[[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Work -> pcicore:hasBibliographicResourceType]*`,
+      description: 'bibliographicResourceType',
+      resolve: async ({bibliographicResourceType}, args,{dataSources}) => {
+        const bibresId =  bibliographicResourceType.split('/').pop()
+        const concept = await dataSources.conceptAPI.getConceptById(bibresId);
+        return concept
+      },
+  },
     inPublication: {
       type: ApolloPublicationType,
       description: 
@@ -1095,80 +1145,6 @@ const RemoveConcepFromHRLPDocumentMutation = mutationWithClientMutationId({
      id, conceptIds
   },{dataSources}) => dataSources.documentAPI.removeClassification({id, conceptIds}),
 });
-
-
-
-// const AddRaceMutation = mutationWithClientMutationId({
-//     name: 'addRace',
-//     inputFields: {
-//         type: { type: new GraphQLNonNull(GraphQLString) },
-//         date: { type: new GraphQLNonNull(GraphQLString) },
-//         time: { type: new GraphQLNonNull(GraphQLString) },
-//         userId: { type: new GraphQLNonNull(GraphQLInt) },
-//     },
-//     outputFields: {
-//         race: {
-//         type: RaceType,
-//         resolve: (payload,args,{dataSources}) => dataSources.userAPI.getRace(payload.raceId),
-//         },
-//         user: {
-//         type: UserType,
-//         resolve: (payload,args,{dataSources}) => dataSources.userAPI.getUser(payload.userId),
-//         },
-//     },
-//     mutateAndGetPayload: ({
-//         type, date, time, userId,
-//     }) => dataSources.userAPI.addRace(type, date, time, userId),
-// });
-
-
-// const DeleteRaceMutation = mutationWithClientMutationId({
-//     name: 'deleteRace',
-//     inputFields: {
-//         id: { type: new GraphQLNonNull(GraphQLInt) },
-//         userId: { type: new GraphQLNonNull(GraphQLInt) },
-//     },
-//     outputFields: {
-//         deletedRace: {
-//         type: RaceType,
-//         resolve: (payload,args,{dataSources}) => payload.race,
-//         },
-//         user: {
-//         type: UserType,
-//         resolve: ({ userId }) => dataSources.userAPI.getUser(userId),
-//         },
-//     },
-//     mutateAndGetPayload: ({ id, userId }) => dataSources.userAPI.deleteRace(id, userId),
-// });
-
-
-// const EditRaceMutation = mutationWithClientMutationId({
-//     name: 'editRace',
-//     inputFields: {
-//         id: { type: new GraphQLNonNull(GraphQLInt) },
-//         userId: { type: new GraphQLNonNull(GraphQLInt) },
-//         type: { type: GraphQLString },
-//         date: { type: GraphQLString },
-//         time: { type: GraphQLString },
-//     },
-//     outputFields: {
-//         editedRace: {
-//         type: RaceType,
-//         resolve: (payload) => payload,
-//         },
-//         user: {
-//         type: UserType,
-//         resolve: ({ userId },args,{dataSources}) => dataSources.userAPI.getUser(userId),
-//         },
-//     },
-//     mutateAndGetPayload: ({
-//         id, userId, type, date, time,
-//     }) => dataSources.userAPI.editRace(id, userId, type, date, time),
-// });
-
-/**
- * Query Type
- */
 
 
 module.exports = {
