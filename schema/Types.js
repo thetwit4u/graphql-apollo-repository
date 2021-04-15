@@ -136,7 +136,8 @@ const IApolloDocumentInterface = new GraphQLInterfaceType({
 
 const { nodeInterface, nodeField, nodesField } = nodeDefinitions(
   (globalId, {dataSources}) => {
-    const { type, id } = fromGlobalId(globalId);;      
+    const { type, id } = fromGlobalId(globalId);
+  
     if (type === 'ConceptScheme') return dataSources.conceptSchemeAPI.getConceptSchemeById(id);
     if (type === 'Concept') return dataSources.conceptAPI.getConceptById(id);
     if (type === 'ApolloPublication') return dataSources.conceptAPI.getConceptById(id);
@@ -149,10 +150,10 @@ const { nodeInterface, nodeField, nodesField } = nodeDefinitions(
     if(obj.bibliographicResourceType === 'http://data.wolterskluwer.com/apollo/resource/object-type/7c688f91-55e0-4a65-aec4-2185b30ef494'){
       return ApolloPublicationType;
     }
-    if (obj.type === 'http://www.w3.org/2004/02/skos/core#ConceptScheme') {
+    if (obj._type === 'http://www.w3.org/2004/02/skos/core#ConceptScheme') {
       return ConceptSchemeType;
     }
-    if (obj.type === 'http://www.w3.org/2004/02/skos/core#Concept') {
+    if (obj._type === 'http://www.w3.org/2004/02/skos/core#Concept') {
       return ConceptType;
     }
     if(obj.inPublication === 'hrlp-lippincott-procedures'){
