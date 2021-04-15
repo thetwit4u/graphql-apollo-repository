@@ -13,7 +13,6 @@ const DEFAULT_LANGUAGE = 'EN'
 const {LANGUAGE, SORT, CONCEPT_TYPE} = require('./enumTypes')
 
 
-
 /**
  * Helper functions
  */
@@ -859,41 +858,8 @@ const WKBENewsType = new GraphQLObjectType({
 
 
 
-//     Short titles of the law
-//     [MACK Content Set -> MACKBibliographicReference (type : WK regulation identifier)]
-//     """
-//     shortTitles: MACKBibliographicReference
-//     """ 
-//     Official title of the law
-//     [MACK Content Set -> MACKBibliographicReference (type : Official regulation identifier)]
-//     """
-//     officialTitle: MACKBibliographicReference
-//     """ 
-//     Title for print purposes
-//     [MACK Content Set -> MACKBibliographicReference (type : Print regulation identifier)]
-//     """
-//     printTitle: MACKBibliographicReference
-//     """ 
-//     promulgation date (signed by legislative body)
-//     [MACK Content Set -> dcterms:issued]
-//     """
-//     issued: Date
-//     """ 
-//     date of publication in official journal 
-//     [MACK Content Set -> pcicore:hasPublicationDate]
-//     """
-//     publicationDate: Date
-//     """ 
-//     'WKBE Source' where the legislation was published
-//     [MACK Content Set -> pcicore:isInPublication]
-//     """
-//     source: Concept
-//     """ 
-//     WKBE Territorial application
-//     [MACK Content Expression -> pcicore:coversLocation]
-//     """
-//     territorialApplication: [Concept]
-//     """ 
+
+
 const WKBELegislationType = new GraphQLObjectType({
   name: 'WKBELegislation',
   description : `WKBE Specific Implementation of Legislation Document *[[See Mapping Apollo - Legislation](https://confluence.wolterskluwer.io/display/AP/2.+Mapping+Brons+to+Apollo+-+Legislation)]*`,
@@ -908,6 +874,14 @@ const WKBELegislationType = new GraphQLObjectType({
     modified: {
       type: GraphQLDateTime,
       resolve: () => faker.date.recent(1)
+    },
+    issued: {
+      type: GraphQLDate,
+      description: `The date when then law was first promulgated by the legislative body (this is usually several days before the publication). *[[MACK Content Set](https://confluence.wolterskluwer.io/display/AP/MACK+Content+Set)  -> dcterms:issued]*`
+    },
+    publicationDate: {
+      type: GraphQLDate,
+      description: `The date when the law first appeared in the official publication of the government (usually 'Belgisch Staatsblad').  *[[MACK Content Set](https://confluence.wolterskluwer.io/display/AP/MACK+Content+Set)  -> pcicore:hasPublicationDate]*`
     },
     identifier: { type: GraphQLString },
     alternativeId: { 
@@ -956,10 +930,17 @@ const WKBELegislationType = new GraphQLObjectType({
     bibliographicResourceType: {
       type: ConceptType,
       description: `Legislation type *[[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Work -> pcicore:hasBibliographicResourceType]*`,
-      description: 'bibliographicResourceType',
       resolve: async ({bibliographicResourceType}, args,{dataSources}) => {
         const bibresId =  bibliographicResourceType.split('/').pop()
         const concept = await dataSources.conceptAPI.getConceptById(bibresId);
+        return concept
+      },
+    },
+    source: {
+      type: ConceptType,
+      description: `'WKBE Source' where the legislation was published *[[MACK Content Set](https://confluence.wolterskluwer.io/display/AP/MACK+Content+Set) -> pcicore:isInPublication]*`,
+      resolve: async ({source}, args,{dataSources}) => {
+        const concept = await dataSources.conceptAPI.getConceptById(source);
         return concept
       },
   },
@@ -984,6 +965,24 @@ const WKBELegislationType = new GraphQLObjectType({
       },
       resolve: async ({about}, args,{dataSources}) => {
         const concepts = await dataSources.conceptAPI.getConceptByIds(about,args);
+        const totalCount = concepts.length
+        return {
+          ...connectionFromArray([...concepts],args),
+          ...{totalCount : totalCount}
+        }
+      },
+    },
+    territorialApplication: {
+      type: conceptsConnection,
+      description: ` WKBE Territorial application.
+      *[MACK Content](https://confluence.wolterskluwer.io/display/AP/MACK+Content) Expression -> pcicore:coversLocation]*`,
+      args: {
+        ...connectionArgs,
+        orderBy: {type: ConceptOrderByType},
+        filters: { type: ConceptFilterType }
+      },
+      resolve: async ({territorialApplication}, args,{dataSources}) => {
+        const concepts = await dataSources.conceptAPI.getConceptByIds(territorialApplication,args);
         const totalCount = concepts.length
         return {
           ...connectionFromArray([...concepts],args),
