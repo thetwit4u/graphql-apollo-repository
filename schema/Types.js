@@ -194,16 +194,11 @@ const ConceptSchemeType = new GraphQLObjectType({
   name: 'ConceptScheme',
   interfaces: [nodeInterface],
   fields: () => ({
-    id: globalIdField('ConceptScheme'),
+    id: globalIdField('ConceptScheme',(obj) => obj._id),
     _id: {type: GraphQLString, description:'Unique URI within Apollo'},
-    created: {
-      type: GraphQLDateTime,
-      resolve: () => faker.date.recent(4)
-    },
-    modified: {
-      type: GraphQLDateTime,
-      resolve: () => faker.date.recent(1)
-    },
+    created: {type: GraphQLDateTime},
+    creator: { type: GraphQLString },
+    modified: {type: GraphQLDateTime },
     identifier: { type: GraphQLString },
     title: {
       type: GraphQLString,

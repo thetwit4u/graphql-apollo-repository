@@ -1416,6 +1416,18 @@ base64-js@^1.3.1:
   resolved "https://registry.yarnpkg.com/base64-js/-/base64-js-1.5.1.tgz#1b1b440160a5bf7ad40b650f095963481903930a"
   integrity sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==
 
+basic-auth-token@^0.4.2:
+  version "0.4.2"
+  resolved "https://registry.yarnpkg.com/basic-auth-token/-/basic-auth-token-0.4.2.tgz#fc56e66e9dd69c462c3ce5ab7a6b535b35d63a56"
+  integrity sha1-/Fbmbp3WnEYsPOWremtTWzXWOlY=
+
+basic-authorization-header@^0.2.7:
+  version "0.2.7"
+  resolved "https://registry.yarnpkg.com/basic-authorization-header/-/basic-authorization-header-0.2.7.tgz#233c9ead813cd2074d7298b25826c086028b770d"
+  integrity sha1-IzyerYE80gdNcpiyWCbAhgKLdw0=
+  dependencies:
+    basic-auth-token "^0.4.2"
+
 binary-extensions@^2.0.0:
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/binary-extensions/-/binary-extensions-2.2.0.tgz#75f502eeaf9ffde42fc98829645be4ea76bd9e2d"

@@ -62,19 +62,72 @@ module.exports = {
                     const searchFilter = []
                     return getFilterOnField(fieldId,filters['altLabelValue'])
                 }
-                default:
+                default: 
             }
         })
         return filterParams.join('&')
     },
+    getFilterSparql(args) {
+        if (args?.filters === undefined) return ''
+        const {filters} = args
+        const filterSparql = Object.keys(filters).map((key) => {
+            switch (key) {
+                case 'ids': {   
+                    const conceptFilterArr = filters['ids'].map((globalID) => {
+                        const {id } = fromGlobalId(globalID);
+                        return `<${id}>`
+                    })
+                    return ` values ?_id { ${conceptFilterArr.join(' ')}} .`
+                }
+                case 'conceptSchemeId': {
+                    const {id } = fromGlobalId(filters['conceptSchemeId']);
+                    return ` values ?inScheme {<${id}}> .`
+                }
+                // case 'bibliographicResourceType': {
+                //         const {id } = fromGlobalId(filters['bibliographicResourceType']);
+                //         return `bibliographicResourceType_like=/${id}$`
+                // }
+                // case 'inPublication': {
+                //     const {id } = fromGlobalId(filters['inPublication']);
+                //     return `inPublication=${id}`
+                // }
+                // case 'prefLabelValue': {
+                //     const lang = filters['language'].toLowerCase()
+                //     const fieldId = `prefLabel_${lang}`
+                //     const searchFilter = []
+                //     return getFilterOnField(fieldId,filters['prefLabelValue'])
+                // }
+                // case 'altLabelValue': {
+                //     const lang = filters['language'].toLowerCase()
+                //     const fieldId = `altLabel_${lang}`
+                //     const searchFilter = []
+                //     return getFilterOnField(fieldId,filters['altLabelValue'])
+                // }
+                default: return ''
+            }
+        })
+        return filterSparql.join(' ')
+    },
+
     getSortingUrl : (args) => {
-        if (args?.orderBy === undefined) return
+        if (args?.orderBy === undefined) return 
         const {orderBy} = args
         const orderByParams = Object.keys(orderBy).map((key) => {
             return `_sort=${key}&_order=${orderBy[key].toLowerCase()}`
            
         })
         return orderByParams.join('&')
+    },
+    getSortingSparql : (args) => {
+        if (args?.orderBy === undefined) return ''
+        const {orderBy} = args
+        const orderByParams = Object.keys(orderBy).map((key) => {
+            return ` ${orderBy[key].toUpperCase()}(${key})`
+           
+        })
+        return ` order by ${orderByKeys.join(' ')}`
     }
+
+    
 
 }
